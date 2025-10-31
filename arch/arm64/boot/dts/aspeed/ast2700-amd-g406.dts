@@ -1,0 +1,320 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// AMD DC-GPU AMC G406 platform DTS
+// Author: Vinu Vaghasia
+// Date: 02/07/2025
+
+/dts-v1/;
+
+#include "aspeed-g7.dtsi"
+#include <dt-bindings/gpio/aspeed-gpio.h>
+#include <dt-bindings/i2c/i2c.h>
+#include "amd-amc-phc.dtsi"
+
+#define DUAL_NODE 0	// 1: DUAL_NODE, 0: SINGLE_NODE
+#define PCIE0_EP 1	// 1: EP, 0: RC
+#define PCIE1_EP 1	// 1: EP, 0: RC
+#define PCIE2_RC 1	// 1: RC, 0: SGMII
+
+/ {
+	model = "AMD-MI4XX-AMC-G406";
+	compatible = "aspeed,ast2700-evb", "aspeed,ast2700";
+
+	chosen {
+		stdout-path = &uart12;
+	};
+
+	memory@400000000 {
+		device_type = "memory";
+		reg = <0x4 0x00000000 0x0 0x40000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		#include "ast2700-reserved-mem.dtsi"
+
+		xdma_memory0: xdma0 {
+			size = <0x0 0x01000000>;
+			alignment = <0x0 0x01000000>;
+			compatible = "shared-dma-pool";
+			no-map;
+		};
+
+		xdma_memory1: xdma1 {
+			size = <0x0 0x01000000>;
+			alignment = <0x0 0x01000000>;
+			compatible = "shared-dma-pool";
+			no-map;
+		};
+	};
+};
+
+// AMC serial console
+&uart12 {
+	status = "okay";
+};
+
+// AMC Boot flash and backup flash
+&fmc {
+	status = "okay";
+	pinctrl-0 = <&pinctrl_fwspi_quad_default>;
+	pinctrl-names = "default";
+
+#define AMC_BANK_LABEL_ACTIVE "amc-active"
+#define AMC_BANK_LABEL_INACTIVE "amc-inactive"
+	flash@0 {
+		status = "okay";
+		m25p,fast-read;
+		label = AMC_BANK_LABEL_ACTIVE;
+		spi-max-frequency = <40000000>;
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <1>;
+#include "amd_amc_g406_active_flash_layout.dtsi"
+	};
+
+	flash@1 {
+		status = "okay";
+		m25p,fast-read;
+		label = AMC_BANK_LABEL_INACTIVE;
+		spi-max-frequency = <40000000>;
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <1>;
+        #include "amd_amc_g406_inactive_flash_layout-128.dtsi"
+	};
+};
+
+// ALT ROT SPI for mctp/pldm-over-spi
+&spi1 {
+	status = "okay";
+	pinctrl-0 = <&pinctrl_spi1_default &pinctrl_spi1_cs1_default>;
+	pinctrl-names = "default";
+
+	spidev0@0 {
+		status = "okay";
+		reg = < 0 >;
+		compatible = "spidev";
+		label = "alt-spi";
+		spi-max-frequency = <40000000>;
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <1>;
+	};
+};
+
+// EMMC0 
+&emmc_controller {
+	status = "okay";
+	mmc-hs200-1_8v;
+};
+
+&emmc {
+	status = "okay";
+	bus-width = <8>;
+	pinctrl-0 = <&pinctrl_emmc_default
+		     &pinctrl_emmcg8_default>;
+	non-removable;
+	max-frequency = <80000000>;
+};
+
+&pinctrl1 {
+	pinctrl_rgmii0_driving: rgmii0-driving {
+		pins = "C20", "C19", "A8", "R14", "A7", "P14",
+		       "D20", "A6", "B6", "N14", "B7", "B8";
+		drive-strength = <1>;
+	};
+};
+
+&mdio0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ethphy0: ethernet-phy@0 {
+		compatible = "ethernet-phy-ieee802.3-c22";
+		reg = <0>;
+	};
+};
+
+&mac0 {
+	status = "okay";
+
+	phy-mode = "rgmii";
+	phy-handle = <&ethphy0>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rgmii0_default &pinctrl_rgmii0_driving>;
+};
+
+&syscon1 {
+	mac0-clk-delay = <0x33 0x30
+			  0x10 0x10
+			  0x10 0x10>;
+	mac1-clk-delay = <0x31 0x31
+			  0x10 0x10
+			  0x10 0x10>;
+	assigned-clocks = <&syscon1 SCU1_CLK_MACHCLK>,
+			  <&syscon1 SCU1_CLK_RGMII>,
+			  <&syscon1 SCU1_CLK_RMII>;
+	assigned-clock-rates = <200000000>, <125000000>, <50000000>;
+};
+
+&pcie0_mmbi0 {
+	status = "okay";
+	memory-region = <&pcie0_mmbi0_memory>;
+
+	mmbi-bmc-int-value = /bits/ 8 <0x00>;
+	mmbi-bmc-int-offset = <0x100000>;
+};
+
+&pcie1_mmbi4 {
+	status = "okay";
+	memory-region = <&pcie1_mmbi4_memory>;
+
+	mmbi-bmc-int-value = /bits/ 8 <0x44>;
+	mmbi-bmc-int-offset = <0x100400>;
+};
+
+&pcie0 {
+	status = "okay";
+};
+
+&pcie1 {
+	status = "okay";
+};
+
+&sdio_controller {
+	status = "okay";
+	mmc-hs200-1_8v;
+
+	vcc_sdhci0: regulator-vcc-sdhci0 {
+		compatible = "regulator-fixed";
+		regulator-name = "SDHCI0 Vcc";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpios = <&gpio0 ASPEED_GPIO(G, 6) GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	vccq_sdhci0: regulator-vccq-sdhci0 {
+		compatible = "regulator-gpio";
+		regulator-name = "SDHCI0 VccQ";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <3300000>;
+		gpios = <&gpio0 ASPEED_GPIO(G, 7) GPIO_ACTIVE_HIGH>;
+		gpios-states = <1>;
+		states = <3300000 1>,
+			 <1800000 0>;
+	};
+
+};
+
+&i2c0 {
+	status = "okay";
+	clock-frequency = <400000>;
+};
+
+&i2c1 {
+	status = "okay";
+	clock-frequency = <400000>;
+};
+
+&i2c2 {
+	status = "okay";
+	clock-frequency = <400000>;
+};
+
+// mctp channel between AST & EAM
+// 0x10 I2C addr is arbitrary address and learned by PHC in the I2C layer's packet frame
+&i2c3 {
+	status = "okay";
+	clock-frequency = <400000>;
+	mctp-controller;
+	mctp@10 {
+		compatible = "mctp-i2c-controller";
+		reg = <(0x10 | I2C_OWN_SLAVE_ADDRESS)>;
+	};
+};
+
+&i2c4 {
+	status = "disabled";
+	clock-frequency = <400000>;
+};
+
+&i2c5 {
+	clock-frequency = <400000>;
+	status = "disabled";
+};
+
+&i2c6 {
+	clock-frequency = <400000>;
+	status = "okay";
+};
+
+&i2c7 {
+	clock-frequency = <400000>;
+	status = "disabled";
+};
+
+// mctp channel between  AST & BMC
+&i2c8 {
+	status = "okay";
+	clock-frequency = <400000>;
+	mctp-controller;
+	mctp@10 {
+		compatible = "mctp-i2c-controller";
+		reg = <(0x10 | I2C_OWN_SLAVE_ADDRESS)>;
+	};
+};
+
+// mctp channel between  AST & ROT
+&i2c9 {
+	status = "okay";
+	clock-frequency = <400000>;
+	multi-master;
+	mctp-controller;
+	mctp@12 {
+		compatible = "mctp-i2c-controller";
+		reg = <(0x12 | I2C_OWN_SLAVE_ADDRESS)>;
+	};
+};
+
+// mctp backup channel between AST & EAM
+// 0x10 I2C addr is arbitrary address and learned by PHC in the I2C layer's packet frame
+&i2c10 {
+	status = "okay";
+	clock-frequency = <400000>;
+	mctp-controller;
+	mctp@10 {
+		compatible = "mctp-i2c-controller";
+		reg = <(0x10 | I2C_OWN_SLAVE_ADDRESS)>;
+	};
+};
+
+&i2c9 {
+	clock-frequency = <400000>;
+	status = "okay";
+};
+
+&i2c11 {
+	clock-frequency = <400000>;
+	status = "disabled";
+};
+
+&i2c12 {
+	clock-frequency = <400000>;
+	status = "disabled";
+};
+
+&i2c13 {
+	clock-frequency = <400000>;
+	status = "disabled";
+};
+
+&vhuba0 {
+	status = "okay";
+};
+
+&vhubb0 {
+	status = "okay";
+};

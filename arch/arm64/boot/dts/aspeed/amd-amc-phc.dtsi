@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// AMD DC-GPU AMC-PHC peripherals DTS
+// Author:
+// Date:
+
+/ {
+	i2c16 { // virtual i2c
+		compatible = "amd,i2c-socket";
+		slave-mode;
+		server-ip = "10.0.2.2";
+		server-port = <7001>;
+	};
+	i2c17 { // virtual i2c
+		compatible = "amd,i2c-socket";
+		slave-mode;
+		server-ip = "10.0.2.2";
+		server-port = <7002>;
+	};
+	i2c18 { // virtual i2c
+		compatible = "amd,i2c-socket";
+		slave-mode;
+		server-ip = "10.0.2.2";
+		server-port = <7003>;
+	};
+	i2c19 { // virtual i2c
+		compatible = "amd,i2c-socket";
+		slave-mode;
+		server-ip = "10.0.2.2";
+		server-port = <7004>;
+	};
+	amc-phc {
+		uartlite0@c0000 {
+			clock-names = "s_axi_aclk";
+			compatible = "xlnx,xps-uartlite-1.00.a";
+			//reg = < 0x0 0x80040000 0x0 0xffff >;
+			amd,reg-offset = <0xc0000>;
+			amd,user-int = <1>;
+			port-number = <1>;
+			current-speed = <115200>;
+			xlnx,use-parity = <0>;
+			xlnx,data-bits = <8>;
+			clock = <100000000>;
+			xlnx,s-axi-aclk-freq-hz-d = "100.0";
+			status = "okay";
+		};
+
+		phc_cfg_spi0@60000 {
+			compatible = "xlnx,axi-quad-spi-1.00.a";
+			amd,reg-offset = <0x60000>;
+			amd,user-int = <9999>;
+			fifo-size = <16>;
+			num-cs = <0x2>;
+			bits-per-word = <8>;
+			xlnx,startup-block = <1>;
+			flash@0 {
+				reg = <0>;
+				compatible = "jedec,spi-nor";
+				status = "okay";
+				label = "phc-active";
+				spi-max-frequency = <50000000>;
+				m25p,fast-read;
+				spi-tx-bus-width = <4>;
+				spi-rx-bus-width = <4>;
+			};
+			flash@1 {
+				reg = <1>;
+				compatible = "jedec,spi-nor";
+				status = "okay";
+				label = "phc-inactive";
+				spi-max-frequency = <50000000>;
+				m25p,fast-read;
+				spi-tx-bus-width = <4>;
+				spi-rx-bus-width = <4>;
+			};
+		};
+
+		phc_i2c0@140000 {
+			compatible = "xlnx,xps-iic-2.00.a";
+			amd,reg-offset = <0x140000>;
+			amd,user-int = <2>;
+		};
+
+	};
+	phca@80000000 {
+		compatible = "amd,phca-pcie";
+		reg = <0x0 0x80000000 0x0 0x10000>; /* PCIe memory-mapped registers */
+
+		/* Add interrupt configuration for GPIO F7 */
+		interrupt-parent = <&gpio0>;  /* ASPEED GPIO controller */
+		interrupts = <47 IRQ_TYPE_EDGE_RISING>; /* GPIO F7 (47), rising edge */
+
+		/* I2C interface information */
+		i2c-bus = <&i2c0>;  /* Phandle to the I2C controller (i2c0) */
+		i2c-addr = <0x50>;  /* I2C slave address (0x50) */
+
+		status = "okay";
+	};
+};

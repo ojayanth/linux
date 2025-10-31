@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: GPL-2.0+
+// INACTIVE bank with aggregated image region 'amc-update' + headers.
+// Offsets align with ACTIVE bank (rwfs/rwfs-backup starts at 0x2B20000).
+//  0x00000000 - 0x02B00000 : amc-update   (u-boot + kernel + rofs)
+//  0x02B00000 - 0x02B10000 : amc-ahdr-update (64KB)
+//  0x02B10000 - 0x02B20000 : bundle-ahdr-update (64KB)
+//  0x02B20000 - 0x08000000 : rwfs-backup (~84MB)
+partitions {
+        compatible = "fixed-partitions";
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        amc-update@0 {
+                reg = <0x0 0x2b00000>; // 43MB combined
+                label = "amc-update";
+        };
+
+        amc-ahdr-update@2b00000 {
+                reg = <0x2b00000 0x10000>; // 64KB
+                label = "amc-ahdr-update";
+        };
+
+        bundle-ahdr-update@2b10000 {
+                reg = <0x2b10000 0x10000>; // 64KB
+                label = "bundle-ahdr-update";
+        };
+
+        rwfs-backup@2b20000 {
+                reg = <0x2b20000 0x54e0000>; // ~84MB
+                label = "rwfs-backup";
+        };
+};

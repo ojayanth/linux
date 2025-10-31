@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: GPL-2.0+
+// Consistent ACTIVE bank layout (128MB flash)
+//  0x00000000 - 0x00200000 : u-boot        (  2MB)
+//  0x00200000 - 0x00D00000 : kernel (FIT)  ( 11MB)
+//  0x00B00000 - 0x02B00000 : rofs (squash) ( 30MB)
+//  0x02B00000 - 0x02B10000 : amc-ahdr      ( 64KB)
+//  0x02B10000 - 0x02B20000 : bundle-ahdr   ( 64KB)
+//  0x02B20000 - 0x08000000 : rwfs (jffs2)  (~84MB)
+//  Flash size: 0x08000000 (128MB)
+partitions {
+	compatible = "fixed-partitions";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	uboot@0 {
+		reg = <0x0 0x200000>; // 2MB
+		label = "u-boot";
+	};
+
+	kernel@200000 {
+		reg = <0x200000 0xb00000>; // 11MB
+		label = "kernel";
+	};
+
+	rofs@b00000 {
+		reg = <0xd00000 0x1e00000>; // 30MB
+		label = "rofs";
+	};
+
+	amc-ahdr@2b00000 {
+		reg = <0x2b00000 0x10000>; // 64KB firmware header
+		label = "amc-ahdr";
+	};
+
+	bundle-ahdr@2b10000 {
+		reg = <0x2b10000 0x10000>; // 64KB bundle header
+		label = "bundle-ahdr";
+	};
+
+	rwfs@2b20000 {
+		reg = <0x2b20000 0x54e0000>; // ~84MB
+		label = "rwfs";
+	};
+};
